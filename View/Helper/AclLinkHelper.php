@@ -18,6 +18,7 @@ class AclLinkHelper extends FormHelper {
 
     public $userModel = 'User';
     public $primaryKey = 'id';
+    private $cached;
 
     public function __construct(View $View, $settings = array()) {
         parent::__construct($View, $settings);
@@ -58,8 +59,21 @@ class AclLinkHelper extends FormHelper {
                 $this->primaryKey => AuthComponent::user($this->primaryKey)
             )
         );
+
         $aco = $plugin . $controller . $action;
-        return $acl->check($aro, $aco);
+        $cache_key = 'User::' . $aro['User']['id'] . md5($aco);
+
+        if(isset($this->cached[$cache_key])){
+            return $this->cached[$cache_key];
+        }
+
+        try{
+            $is_allowed = $acl->check($aro, $aco) ? true : false;
+            $this->cached[$cache_key] = $is_allowed;
+            return $is_allowed;
+        } catch (Exception $e) {
+            return false;
+        }
     }
 
     public function link($title, $url = null, $options = array(), $confirmMessage = null) {
@@ -79,7 +93,6 @@ class AclLinkHelper extends FormHelper {
     /*
      * check if you have access by array url
      */
-
     public function aclCheck($url, $appendCurrent = true) {
         return $this->_aclCheck($url, $appendCurrent);
     }
